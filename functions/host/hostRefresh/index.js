@@ -1,4 +1,4 @@
-import { GetItemCommand } from "@aws-sdk/client-dynamodb";
+import { GetItemCommand, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { ddbClient } from "./ddbClient.js";
 import { jwtVerify, SignJWT } from "jose";
@@ -18,13 +18,17 @@ export const handler = async (event) => {
             throw { statusCode: 401, message: "Invalid or expired refresh token" };
         }
 
-        // 3. Issue a new access token
-        const accessToken = await generateAccessToken(whatsAppNumber);
+        // 3. Issue new access token + new refresh token (rotation)
+        const accessToken = await generateToken(whatsAppNumber, process.env.ACC_AUD, process.env.ACC_EXP);
+        const newRefreshToken = await generateToken(whatsAppNumber, process.env.REF_AUD, process.env.REF_EXP);
+
+        // 4. Store the new refresh token in DynamoDB (invalidates the old one)
+        await updateRefreshToken(whatsAppNumber, newRefreshToken);
 
         return {
             statusCode: 200,
             headers: { "Access-Control-Allow-Origin": "*" },
-            body: JSON.stringify({ accessToken }),
+            body: JSON.stringify({ accessToken, refreshToken: newRefreshToken }),
         };
     } catch (error) {
         const statusCode = error.statusCode || 401;
@@ -63,14 +67,29 @@ async function getHost(whatsAppNumber) {
     return unmarshall(result.Item);
 }
 
-async function generateAccessToken(subject) {
+async function updateRefreshToken(whatsAppNumber, refreshToken) {
+    const PK = "HOST";
+    const SK = `HOST#${whatsAppNumber}`;
+
+    await ddbClient.send(
+        new UpdateItemCommand({
+            Key: marshall({ PK, SK }),
+            ExpressionAttributeNames: { "#RefreshToken": "RefreshToken" },
+            ExpressionAttributeValues: marshall({ ":RefreshToken": refreshToken }),
+            UpdateExpression: "SET #RefreshToken = :RefreshToken",
+            TableName: process.env.DYNAMODB_TABLE_NAME,
+        })
+    );
+}
+
+async function generateToken(subject, audience, expiresIn) {
     const secret = Buffer.from(process.env.JWT_SECRET, "hex");
     return new SignJWT({})
         .setProtectedHeader({ alg: "HS256" })
         .setSubject(subject)
         .setIssuedAt()
         .setIssuer(process.env.ISS)
-        .setAudience(process.env.ACC_AUD)
-        .setExpirationTime(process.env.ACC_EXP)
+        .setAudience(audience)
+        .setExpirationTime(expiresIn)
         .sign(secret);
 }

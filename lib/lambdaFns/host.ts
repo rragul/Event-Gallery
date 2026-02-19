@@ -71,12 +71,13 @@ const createHostRefreshFn = (scope: Construct, dataTable: CfnTable) => {
             ACC_EXP: "8h",
             ISS: "https://event-gallery.app",
             REF_AUD: "host-refresh.event-gallery.app",
+            REF_EXP: "30d",
             JWT_SECRET,
         },
         policyStatements: [
             new PolicyStatement({
                 effect: Effect.ALLOW,
-                actions: ["dynamodb:GetItem"],
+                actions: ["dynamodb:GetItem", "dynamodb:UpdateItem"],
                 resources: [dataTable.attrArn],
             }),
         ],
