@@ -6,129 +6,55 @@ import {
   IModel,
 } from "aws-cdk-lib/aws-apigateway";
 
-
-const createCreatePrizeModel = (restApi: RestApi): Model => {
-  const requestModel = new Model(restApi, "CreatePrizeModel", {
+const createHostSignUpModel = (restApi: RestApi): Model => {
+  const requestModel = new Model(restApi, "HostSignUpModel", {
     restApi,
     contentType: "application/json",
-    modelName: "CreatePrizeModel",
+    modelName: "HostSignUpModel",
     schema: {
       schema: JsonSchemaVersion.DRAFT4,
-      title: "CreatePrizeModel",
+      title: "HostSignUpModel",
       type: JsonSchemaType.OBJECT,
       properties: {
-        name: {
-          type: JsonSchemaType.STRING,
-        },
-        stock: {
-          type: JsonSchemaType.INTEGER,
-          minimum: 0,
-        },
-        imageID: {
-          type: JsonSchemaType.INTEGER,
-          minimum: 0,
-        },
+        email: { type: JsonSchemaType.STRING, format: "email" },
+        password: { type: JsonSchemaType.STRING, minLength: 8 },
+        name: { type: JsonSchemaType.STRING, minLength: 2 },
+        phone: { type: JsonSchemaType.STRING, pattern: "^[0-9]{7,15}$" },
       },
-      required: ["name", "stock", "imageID"],
+      required: ["email", "password", "name", "phone"],
       additionalProperties: false,
     },
   });
-
   return requestModel;
 };
 
-const createSignupModel = (restApi: RestApi): Model => {
-  const requestModel = new Model(restApi, "SignupModel", {
+const createHostLoginModel = (restApi: RestApi): Model => {
+  const requestModel = new Model(restApi, "HostLoginModel", {
     restApi,
     contentType: "application/json",
-    modelName: "SignupModel",
+    modelName: "HostLoginModel",
     schema: {
       schema: JsonSchemaVersion.DRAFT4,
-      title: "SignupModel",
+      title: "HostLoginModel",
       type: JsonSchemaType.OBJECT,
       properties: {
-        mobileNumber: {
-          type: JsonSchemaType.STRING,
-          pattern: "^[0-9]{10,15}$",
-        },
-        nickName: {
-          type: JsonSchemaType.STRING,
-        },
-        password: {
-          type: JsonSchemaType.STRING,
-          minLength: 6,
-        },
+        email: { type: JsonSchemaType.STRING, format: "email" },
+        password: { type: JsonSchemaType.STRING, minLength: 1 },
       },
-      required: ["mobileNumber", "nickName", "password"],
+      required: ["email", "password"],
       additionalProperties: false,
     },
   });
-
   return requestModel;
 };
-
-const createLoginModel = (restApi: RestApi): Model => {
-  const requestModel = new Model(restApi, "LoginModel", {
-    restApi,
-    contentType: "application/json",
-    modelName: "LoginModel",
-    schema: {
-      schema: JsonSchemaVersion.DRAFT4,
-      title: "LoginModel",
-      type: JsonSchemaType.OBJECT,
-      properties: {
-        mobileNumber: {
-          type: JsonSchemaType.STRING,
-          pattern: "^[0-9]{10,15}$",
-        },
-        password: {
-          type: JsonSchemaType.STRING,
-          minLength: 6,
-        },
-      },
-      required: ["mobileNumber", "password"],
-      additionalProperties: false,
-    },
-  });
-
-  return requestModel;
-};
-
-const createRefreshModel = (restApi: RestApi): Model => {
-  const requestModel = new Model(restApi, "RefreshModel", {
-    restApi,
-    contentType: "application/json",
-    modelName: "RefreshModel",
-    schema: {
-      schema: JsonSchemaVersion.DRAFT4,
-      title: "RefreshModel",
-      type: JsonSchemaType.OBJECT,
-      properties: {
-        refreshToken: {
-          type: JsonSchemaType.STRING,
-          minLength: 20,
-        },
-      },
-      required: ["refreshToken"],
-      additionalProperties: false,
-    },
-  });
-
-  return requestModel;
-};
-
 
 export const createRequestModels = (
   restApi: RestApi
 ): Record<string, IModel> => {
-  const createPrizeModel = createCreatePrizeModel(restApi);
-  const signupModel = createSignupModel(restApi);
-  const loginModel = createLoginModel(restApi);
-  const refreshModel = createRefreshModel(restApi);
+  const hostSignUpModel = createHostSignUpModel(restApi);
+  const hostLoginModel = createHostLoginModel(restApi);
   return {
-    createPrizeModel,
-    signupModel,
-    loginModel,
-    refreshModel
+    hostSignUpModel,
+    hostLoginModel,
   };
 };

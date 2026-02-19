@@ -2,7 +2,7 @@ import { CfnTable } from "aws-cdk-lib/aws-dynamodb";
 import { Construct } from "constructs";
 
 const create_DB_Table = (scope: Construct): CfnTable => {
-  const tableName = "Template-DB";
+  const tableName = "EventGallery-DB";
 
   const table = new CfnTable(scope, tableName, {
     tableName,

@@ -1,6 +1,6 @@
-# AWS CDK Template
+# Event Gallery - AWS CDK Project
 
-This repository provides a ready-to-use AWS CDK template for building serverless backend applications. It includes a pre-structured layout for API Gateway, Lambda functions, request models, and DynamoDB integrations, making it easy to start new projects without rebuilding the setup each time.
+This repository provides the AWS CDK infrastructure for the Event Gallery Face Recognition System. It includes a serverless backend with API Gateway, Lambda functions, request models, and DynamoDB integrations.
 
 ## 📦 Tech Stack
 
@@ -14,9 +14,9 @@ This repository provides a ready-to-use AWS CDK template for building serverless
 ## 📁 Project Structure
 
 ```
-cdk-template/
+event-gallery/
 ├── bin/
-│   └── template.ts
+│   └── event-gallery.ts
 ├── lib/
 │   ├── apiEndpoints/
 │   ├── lambdaFns/
@@ -24,7 +24,7 @@ cdk-template/
 │   ├── restApi.ts
 │   ├── dynamoDB.ts
 │   ├── utils.ts
-│   └── template-stack.ts
+│   └── event-gallery-stack.ts
 ├── functions/
 │   ├── admin/
 │   ├── auth/
