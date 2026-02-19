@@ -30,6 +30,18 @@ const createHostLogin_APIEndPoint = (
     });
 };
 
+const createHostRefresh_APIEndPoint = (
+    restApi: RestApi,
+    lambdaFn: IFunction,
+    requestModel: IModel,
+    requestValidator: IRequestValidator
+): void => {
+    createApiEndpoint(restApi, "host/refresh", "POST", lambdaFn, {
+        requestModels: { "application/json": requestModel },
+        requestValidator,
+    });
+};
+
 export const createHostAPIEndPoints = (
     restApi: RestApi,
     hostLambdaFns: Record<string, IFunction>,
@@ -46,6 +58,12 @@ export const createHostAPIEndPoints = (
         restApi,
         hostLambdaFns.hostLoginFn,
         requestModels.hostLoginModel,
+        requestValidator
+    );
+    createHostRefresh_APIEndPoint(
+        restApi,
+        hostLambdaFns.hostRefreshFn,
+        requestModels.hostRefreshModel,
         requestValidator
     );
 };

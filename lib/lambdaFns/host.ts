@@ -60,15 +60,42 @@ const createHostLoginFn = (scope: Construct, dataTable: CfnTable) => {
     return fn;
 };
 
+const createHostRefreshFn = (scope: Construct, dataTable: CfnTable) => {
+    const fn = createLambdaFnWithRole(scope, {
+        fnName: "hostRefresh",
+        codePath: "functions/host/hostRefresh",
+        environment: {
+            REGION: Stack.of(scope).region,
+            DYNAMODB_TABLE_NAME: dataTable.tableName!,
+            ACC_AUD: "host.event-gallery.app",
+            ACC_EXP: "8h",
+            ISS: "https://event-gallery.app",
+            REF_AUD: "host-refresh.event-gallery.app",
+            JWT_SECRET,
+        },
+        policyStatements: [
+            new PolicyStatement({
+                effect: Effect.ALLOW,
+                actions: ["dynamodb:GetItem"],
+                resources: [dataTable.attrArn],
+            }),
+        ],
+    });
+
+    return fn;
+};
+
 export const createHostLambdaFns = (
     scope: Construct,
     dataTable: CfnTable
 ): Record<string, IFunction> => {
     const hostSignUpFn = createHostSignUpFn(scope, dataTable);
     const hostLoginFn = createHostLoginFn(scope, dataTable);
+    const hostRefreshFn = createHostRefreshFn(scope, dataTable);
 
     return {
         hostSignUpFn,
         hostLoginFn,
+        hostRefreshFn,
     };
 };
