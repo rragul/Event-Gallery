@@ -42,6 +42,18 @@ const createHostRefresh_APIEndPoint = (
     });
 };
 
+const createHostVerifyOtp_APIEndPoint = (
+    restApi: RestApi,
+    lambdaFn: IFunction,
+    requestModel: IModel,
+    requestValidator: IRequestValidator
+): void => {
+    createApiEndpoint(restApi, "host/verify-otp", "POST", lambdaFn, {
+        requestModels: { "application/json": requestModel },
+        requestValidator,
+    });
+};
+
 export const createHostAPIEndPoints = (
     restApi: RestApi,
     hostLambdaFns: Record<string, IFunction>,
@@ -64,6 +76,12 @@ export const createHostAPIEndPoints = (
         restApi,
         hostLambdaFns.hostRefreshFn,
         requestModels.hostRefreshModel,
+        requestValidator
+    );
+    createHostVerifyOtp_APIEndPoint(
+        restApi,
+        hostLambdaFns.hostVerifyOtpFn,
+        requestModels.hostVerifyOtpModel,
         requestValidator
     );
 };

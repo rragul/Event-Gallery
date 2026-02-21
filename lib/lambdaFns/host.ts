@@ -15,12 +15,8 @@ const createHostSignUpFn = (scope: Construct, dataTable: CfnTable) => {
         environment: {
             REGION: Stack.of(scope).region,
             DYNAMODB_TABLE_NAME: dataTable.tableName!,
-            ACC_AUD: "host.event-gallery.app",
-            ACC_EXP: "8h",
-            ISS: "https://event-gallery.app",
-            REF_AUD: "host-refresh.event-gallery.app",
-            REF_EXP: "30d",
-            JWT_SECRET,
+            // TODO: Remove HARDCODED_OTP when Meta/WhatsApp API access is granted
+            HARDCODED_OTP: "123456",
         },
         policyStatements: [
             new PolicyStatement({
@@ -86,6 +82,32 @@ const createHostRefreshFn = (scope: Construct, dataTable: CfnTable) => {
     return fn;
 };
 
+const createHostVerifyOtpFn = (scope: Construct, dataTable: CfnTable) => {
+    const fn = createLambdaFnWithRole(scope, {
+        fnName: "hostVerifyOtp",
+        codePath: "functions/host/hostVerifyOtp",
+        environment: {
+            REGION: Stack.of(scope).region,
+            DYNAMODB_TABLE_NAME: dataTable.tableName!,
+            ACC_AUD: "host.event-gallery.app",
+            ACC_EXP: "8h",
+            ISS: "https://event-gallery.app",
+            REF_AUD: "host-refresh.event-gallery.app",
+            REF_EXP: "30d",
+            JWT_SECRET,
+        },
+        policyStatements: [
+            new PolicyStatement({
+                effect: Effect.ALLOW,
+                actions: ["dynamodb:GetItem", "dynamodb:UpdateItem"],
+                resources: [dataTable.attrArn],
+            }),
+        ],
+    });
+
+    return fn;
+};
+
 export const createHostLambdaFns = (
     scope: Construct,
     dataTable: CfnTable
@@ -93,10 +115,12 @@ export const createHostLambdaFns = (
     const hostSignUpFn = createHostSignUpFn(scope, dataTable);
     const hostLoginFn = createHostLoginFn(scope, dataTable);
     const hostRefreshFn = createHostRefreshFn(scope, dataTable);
+    const hostVerifyOtpFn = createHostVerifyOtpFn(scope, dataTable);
 
     return {
         hostSignUpFn,
         hostLoginFn,
         hostRefreshFn,
+        hostVerifyOtpFn,
     };
 };

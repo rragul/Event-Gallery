@@ -73,15 +73,40 @@ const createHostRefreshModel = (restApi: RestApi): Model => {
   return requestModel;
 };
 
+const createHostVerifyOtpModel = (restApi: RestApi): Model => {
+  const requestModel = new Model(restApi, "HostVerifyOtpModel", {
+    restApi,
+    contentType: "application/json",
+    modelName: "HostVerifyOtpModel",
+    schema: {
+      schema: JsonSchemaVersion.DRAFT4,
+      title: "HostVerifyOtpModel",
+      type: JsonSchemaType.OBJECT,
+      properties: {
+        whatsAppNumber: {
+          type: JsonSchemaType.STRING,
+          pattern: "^\\+?[0-9]{7,15}$",
+        },
+        otp: { type: JsonSchemaType.STRING, minLength: 6, maxLength: 6 },
+      },
+      required: ["whatsAppNumber", "otp"],
+      additionalProperties: false,
+    },
+  });
+  return requestModel;
+};
+
 export const createRequestModels = (
   restApi: RestApi
 ): Record<string, IModel> => {
   const hostSignUpModel = createHostSignUpModel(restApi);
   const hostLoginModel = createHostLoginModel(restApi);
   const hostRefreshModel = createHostRefreshModel(restApi);
+  const hostVerifyOtpModel = createHostVerifyOtpModel(restApi);
   return {
     hostSignUpModel,
     hostLoginModel,
     hostRefreshModel,
+    hostVerifyOtpModel,
   };
 };

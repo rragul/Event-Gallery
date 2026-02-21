@@ -2,11 +2,12 @@ import { PutItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
 import { ddbClient } from "./ddbClient.js";
 import { hash } from "@node-rs/argon2";
-import { SignJWT } from "jose";
 
 const ERROR_MESSAGES = {
-    HOST_ALREADY_EXISTS: "Host already exists",
+    HOST_ALREADY_ACTIVE: "Host already exists",
 };
+
+const OTP_TTL_MINUTES = 10;
 
 export const handler = async (event) => {
     try {
@@ -16,24 +17,24 @@ export const handler = async (event) => {
         const passwordHash = await hashPassword(password);
         if (!passwordHash.result) throw new Error(passwordHash.message);
 
-        const accessToken = await generateToken(whatsAppNumber, process.env.ACC_AUD, process.env.ACC_EXP);
-        if (!accessToken.result) throw new Error(accessToken.message);
+        const otp = generateOtp();
+        const otpExpiresAt = Date.now() + OTP_TTL_MINUTES * 60 * 1000;
 
-        const refreshToken = await generateToken(whatsAppNumber, process.env.REF_AUD, process.env.REF_EXP);
-        if (!refreshToken.result) throw new Error(refreshToken.message);
-
-        const createResult = await createHost({ whatsAppNumber, name, email, passwordHash: passwordHash.result, refreshToken: refreshToken.result });
+        const createResult = await createHost({ whatsAppNumber, name, email, passwordHash: passwordHash.result, otp, otpExpiresAt });
         if (!createResult.status) throw new Error(createResult.message);
+
+        // TODO: Replace with WhatsApp/Meta API call when access is granted
+        console.info(`[DEV] OTP for ${whatsAppNumber}: ${otp}`);
 
         return {
             statusCode: 201,
             headers: { "Access-Control-Allow-Origin": "*" },
-            body: JSON.stringify({ accessToken: accessToken.result, refreshToken: refreshToken.result }),
+            body: JSON.stringify({ message: "OTP sent to your WhatsApp number" }),
         };
     } catch (error) {
         console.error({ level: "ERROR", message: "Handler error", error });
 
-        if (error.message === ERROR_MESSAGES.HOST_ALREADY_EXISTS) {
+        if (error.message === ERROR_MESSAGES.HOST_ALREADY_ACTIVE) {
             return {
                 statusCode: 400,
                 headers: { "Access-Control-Allow-Origin": "*" },
@@ -49,6 +50,12 @@ export const handler = async (event) => {
     }
 };
 
+const generateOtp = () => {
+    // Use hardcoded OTP when env var is set (dev bypass for WhatsApp API)
+    if (process.env.HARDCODED_OTP) return process.env.HARDCODED_OTP;
+    return String(Math.floor(100000 + Math.random() * 900000));
+};
+
 const hashPassword = async (password) => {
     const returnValue = { message: null, result: null };
     try {
@@ -61,7 +68,7 @@ const hashPassword = async (password) => {
     }
 };
 
-const createHost = async ({ whatsAppNumber, name, email, passwordHash, refreshToken }) => {
+const createHost = async ({ whatsAppNumber, name, email, passwordHash, otp, otpExpiresAt }) => {
     const returnValue = { message: null, status: false };
     try {
         const PK = "HOST";
@@ -75,11 +82,16 @@ const createHost = async ({ whatsAppNumber, name, email, passwordHash, refreshTo
                     SK,
                     HostDetails: { whatsAppNumber, name, email },
                     Signature: passwordHash,
-                    RefreshToken: refreshToken,
-                    Status: "active",
+                    Otp: otp,
+                    OtpExpiresAt: otpExpiresAt,
+                    Status: "pending",
                     CreatedAt: Date.now(),
                 }),
-                ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+                // Allow overwrite only if status is "pending" (expired OTP retry)
+                // Block if status is "active" (already registered host)
+                ConditionExpression: "attribute_not_exists(PK) OR #Status = :pending",
+                ExpressionAttributeNames: { "#Status": "Status" },
+                ExpressionAttributeValues: marshall({ ":pending": "pending" }),
             })
         );
 
@@ -88,7 +100,7 @@ const createHost = async ({ whatsAppNumber, name, email, passwordHash, refreshTo
     } catch (error) {
         console.error("Error in createHost:", error);
         if (error.name === "ConditionalCheckFailedException") {
-            returnValue.message = ERROR_MESSAGES.HOST_ALREADY_EXISTS;
+            returnValue.message = ERROR_MESSAGES.HOST_ALREADY_ACTIVE;
             return returnValue;
         }
         returnValue.message = error.message;
@@ -96,22 +108,3 @@ const createHost = async ({ whatsAppNumber, name, email, passwordHash, refreshTo
     }
 };
 
-const generateToken = async (subject, audience, expiresIn) => {
-    const returnValue = { message: null, result: null };
-    try {
-        const secret = Buffer.from(process.env.JWT_SECRET, "hex");
-        returnValue.result = await new SignJWT({})
-            .setProtectedHeader({ alg: "HS256" })
-            .setSubject(subject)
-            .setIssuedAt()
-            .setIssuer(process.env.ISS)
-            .setAudience(audience)
-            .setExpirationTime(expiresIn)
-            .sign(secret);
-        return returnValue;
-    } catch (error) {
-        console.error("Error in generateToken:", error);
-        returnValue.message = error.message;
-        return returnValue;
-    }
-};
